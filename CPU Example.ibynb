@@ -1,0 +1,162 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "e8d9ae64",
+   "metadata": {},
+   "source": [
+    "### First let's import the most basic implementation and Makie for plotting.\n",
+    "\n",
+    "### If you have a gpu you can use GLMakie instead of CairoMakie for speed"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "c50120fc",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Step"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "using CairoMakie, ProgressMeter # or GLMakie\n",
+    "\n",
+    "include(\"abp.jl\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c7103bec",
+   "metadata": {},
+   "source": [
+    "Uncomment the below cell if you want to not see a preview = faster render"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "52eb8b4b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[32mProgress:  99%|████████████████████████████████████████▋|  ETA: 0:00:00\u001b[39m"
+     ]
+    }
+   ],
+   "source": [
+    "# run a model\n",
+    "\n",
+    "T = 5000 # time steps\n",
+    "\n",
+    "L = 50 # box length\n",
+    "\n",
+    "X = rand(100,3)*(L-20).+10 # random initial conditions on position\n",
+    "X[:,3] = mod.(X[:,3],2π) # random orientations\n",
+    "Traj = zeros(T,size(X,1),3) # to store the trajectories\n",
+    "Traj[1,:,:] = X\n",
+    "\n",
+    "prog = Progress(T)\n",
+    "for t in 1:T-1\n",
+    "    # get next positions\n",
+    "    Traj[t+1,:,:] = Step(Traj[t,:,:],L=L,v0=10.)\n",
+    "    next!(prog)\n",
+    "end"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "5839ffd1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[32mProgress: 100%|█████████████████████████████████████████| Time: 0:01:11\u001b[39m\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "\"abp.mp4\""
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# create a movie!\n",
+    "\n",
+    "fig = Figure(resolution=(1920/2,1080/2))\n",
+    "ax = Axis(fig[1,1])\n",
+    "\n",
+    "particles = Node([Point2(Traj[1,i,1:2]...) for i in 1:size(Traj,2)])\n",
+    "dir = Node([Point2(cos(Traj[1,i,3]),sin(Traj[1,i,3])) for i in 1:size(Traj,2)])\n",
+    "\n",
+    "scatter!(ax,particles,\n",
+    "    markersize = (2,2),\n",
+    "    markerspace=SceneSpace,\n",
+    ")\n",
+    "\n",
+    "arrows!(ax,particles,dir,lengthscale=1.,linewidth=4.,arrowsize=0.,markerspace=SceneSpace)\n",
+    "\n",
+    "\n",
+    "limits!(ax,0,L,0,L)\n",
+    "\n",
+    "ax.aspect = AxisAspect(1)\n",
+    "\n",
+    "prog = Progress(size(Traj,1)-1)\n",
+    "record(fig, \"abp.mp4\", collect(2:1:size(Traj,1)), framerate=60) do i\n",
+    "\n",
+    "    new_particles = particles[]\n",
+    "    new_dir = dir[]\n",
+    "    for j in 1:length(new_particles)\n",
+    "        new_particles[j] = Point2(Traj[i,j,1:2]...)\n",
+    "        new_dir[j] = Point2(cos(Traj[i,j,3]),sin(Traj[i,j,3]))\n",
+    "    end\n",
+    "    particles[] = new_particles\n",
+    "    dir[] = new_dir\n",
+    "    next!(prog)\n",
+    "end"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "fbe5c4d8",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Julia-1.5 nodeps 1.5.0",
+   "language": "julia",
+   "name": "julia-1.5-nodeps-1.5"
+  },
+  "language_info": {
+   "file_extension": ".jl",
+   "mimetype": "application/julia",
+   "name": "julia",
+   "version": "1.5.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
