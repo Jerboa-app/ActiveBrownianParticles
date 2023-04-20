@@ -8,8 +8,6 @@ GLMakie.set_window_config!(framerate = Inf, vsync = false)
 # trying to plot and display!
 GLMakie.inline!(true)
 
-include("include/AlphaShapes/AlphaShapes.jl")
-
 import ArgParse.parse_item
 
 function parse_item(::Type{Array{Float64,1}}, x::AbstractString)
@@ -73,7 +71,7 @@ s = ArgParseSettings()
 	arg_type = Float64
 	default = 1.0
 
-	"--ellipse"
+	"--minor-axis"
 	help = "minor axis length, 0 plots a circle"
 	arg_type = Float64
 	default = 0.0
@@ -137,7 +135,7 @@ T_max = args["max-time"]
 flash = args["flashing-bounds"]
 colour = args["colour"]
 offset = args["offset"]
-ellipse = args["ellipse"]
+ellipse = args["minor-axis"]
 sizes = args["sizes"]
 
 """
@@ -214,43 +212,23 @@ end
 A delaunay triangulation based local density measure
 """
 function Density(X)
-	if periodic == 0
-	    tess,inds = AlphaShapes.GetDelaunayTriangulation(X,true);
-		d = zeros(size(X,1))
-		for i in 1:size(X,1)
-	    	d[i] = AlphaShapes.WeightedDTFELocalDensity(i,tess,inds)
-		end
-		return d
-	end
-
     d = zeros(size(X,1))
-    D = pairwise(PeriodicEuclidean([periodic,periodic]),X')
-    # for i in 1:size(X,1)
-    #     for j in 1:size(X,1)
-    #         Rx = X[j,1]-X[i,1]
-    #         Ry = X[j,2]-X[i,2]
-    #         if (Rx > periodic*0.5)
-    #             Rx -= periodic
-    #         elseif (Rx <= -periodic*0.5)
-    #             Rx += periodic
-    #         end
-	#
-    #         if (Ry > periodic*0.5)
-    #             Ry -= periodic
-    #         elseif (Ry <= -periodic*0.5)
-    #             Ry += periodic
-    #         end
-    #         D[i,j] = Rx*Rx+Ry*Ry
-    #     end
-    # end
+	if periodic == 0
+	    D = pairwise(Euclidean(),X')
 
-	for i in 1:size(X,1)
-        nn = D[i,:][D[i,:].>0]
-		d[i] = 1.0/ (sum(sort(nn)[1:7])/7.)^2.0
+		for i in 1:size(X,1)
+			nn = D[i,:][D[i,:].>0]
+			d[i] = 1.0/ (sum(sort(nn)[1:7])/7.)^2.0
+		end
+	else
+		D = pairwise(PeriodicEuclidean([periodic,periodic]),X')
+
+		for i in 1:size(X,1)
+			nn = D[i,:][D[i,:].>0]
+			d[i] = 1.0/ (sum(sort(nn)[1:7])/7.)^2.0
+		end
 	end
-
 	return d
-
 end
 
 cm = cmap("heat")
@@ -379,6 +357,9 @@ if (sizes!="")
 	[push!(ABs,Vec2f0(2.0.*s[i,:])) for i in 1:size(s,1)]
 else
 	if ellipse > 0
+		# bug fix haaack
+		radius *= 2
+		ellipse *= 2
 		[push!(ABs,Vec2f0(2*radius,2*ellipse)) for i in 1:size(T,2)]
 	else
 		[push!(ABs,Vec2f0(2*radius,2*radius)) for i in 1:size(T,2)]

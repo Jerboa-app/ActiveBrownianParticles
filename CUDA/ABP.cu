@@ -222,8 +222,9 @@ int main(int argc, char ** argv){
   }
   // work out size of box
   double l = L;
-  if (periodic){
-  	if (packing == 0){
+  if (isinf(l)) { l = std::sqrt(N*M_PI*r2)/0.33; }
+	if (periodic){
+	  if (packing == 0){
 	    l = L;
 	  }
 	  else if (std::isnan(L) || std::isinf(L)){
@@ -287,7 +288,7 @@ int main(int argc, char ** argv){
     Trajectories[0*N*4 + 4*i + 2] = O[i];
     Trajectories[0*N*4 + 4*i + 3] = 0.0;
   }
-	std::cout << N << ", " << l << "\n";
+	std::cout << N << " particles, in a box of size " << l << "\n";
   // hand over to CUDA
   TakeSteps(X,O,ABs,Trajectories,N,total_steps,StepsBetweenSaves,dt,k,mu,mu_r,
     Dt,Dr,v0,rcrit,kappa,l,periodic,a!=b);
